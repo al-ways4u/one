@@ -1,29 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>My Website</title>
-    <link rel="stylesheet" href="./style.css">
-    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+
+<head>
+    <title>My Cozy MMO</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
         canvas {
-            display: block;
-            background: #cce7ff;
+            border: 1px solid black;
         }
     </style>
-  </head>
-  <body>
-    <main>
-        <h1>Welcome to My Game!!</h1>  
-    </main>
-    <canvas id="gameCanvas"></canvas>
-    <script src="script.js"></script>
+</head>
+
+<body>
+    <h1>Welcome to Our Cozy MMO, Babe!</h1>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <!-- Socket.IO from your Replit URL -->
     <script src="https://83473182-f631-4560-aec2-e8cd6808768b-00-3bn7k6m9opgnl.pike.replit.dev/socket.io/socket.io.js"></script>
-  </body>
+
+    <script>
+        // Connect to your Replit server
+        const socket = io("https://83473182-f631-4560-aec2-e8cd6808768b-00-3bn7k6m9opgnl.pike.replit.dev");
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const playerSize = 30;
+        const speed = 5;
+
+        const player = {
+            x: 100,
+            y: 100,
+            color: getRandomColor()
+        };
+
+        const players = {};
+
+        // Movement controls
+        const keys = {};
+        window.addEventListener('keydown', (e) => keys[e.key] = true);
+        window.addEventListener('keyup', (e) => keys[e.key] = false);
+
+        // Random color function
+        function getRandomColor() {
+            return hsl(${Math.random() * 360}, 70%, 60%);
+        }
+
+        // Draw a player
+        function drawPlayer(p) {
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, playerSize, playerSize);
+        }
+
+        // Game loop
+        function gameLoop() {
+            // Movement logic
+            if (keys['ArrowUp']) player.y -= speed;
+            if (keys['ArrowDown']) player.y += speed;
+            if (keys['ArrowLeft']) player.x -= speed;
+            if (keys['ArrowRight']) player.x += speed;
+
+            // Send updated position to the server
+            socket.emit('move', { x: player.x, y: player.y });
+
+            // Clear the canvas and redraw everything
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (const id in players) {
+                drawPlayer(players[id]);
+            }
+            drawPlayer(player);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Handle new player joining
+        socket.on('currentPlayers', (serverPlayers) => {
+            Object.assign(players, serverPlayers);
+        });
+
+        // Add new players
+        socket.on('newPlayer', (newPlayer) => {
+            players[newPlayer.id] = newPlayer;
+        });
+
+        // Update player positions
+        socket.on('playerMoved', (data) => {
+            if (players[data.id]) {
+                players[data.id].x = data.x;
+                players[data.id].y = data.y;
+            }
+        });
+
+        // Handle player leaving
+        socket.on('playerLeft', (id) => {
+            delete players[id];
+        });
+
+        // Start the game loop
+        gameLoop();
+    </script>
+
+</body>
+
 </html>
